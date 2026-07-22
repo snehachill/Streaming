@@ -19,13 +19,9 @@ import VideoStage from '../../component/videostage';
 import ChatSidebar from '../../component/chatsidebar';
 import VideoCall from '../../component/VideoCall';
 
-// Prefer an explicit runtime override, otherwise use the deployed Render
-// backend in production and localhost during local development.
-const SOCKET_SERVER_URL =
-  process.env.NEXT_PUBLIC_SOCKET_URL ||
-  (process.env.NODE_ENV === 'development'
-    ? 'http://localhost:4000'
-    : 'https://streaming-5vi3.onrender.com');
+// Use the deployed Render Socket.IO backend directly so the client never
+// falls back to a malformed or localhost-only URL at runtime.
+const SOCKET_SERVER_URL = 'https://streaming-5vi3.onrender.com';
 
 // Deterministic accent color per user, picked from a small dense-UI palette.
 const AVATAR_COLORS = ['#F97066', '#F0B429', '#3FB950', '#3B9EFF', '#C084FC', '#F472B6'];
