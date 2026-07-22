@@ -18,18 +18,27 @@ const io = new Server(server, {
   },
 });
 
-const broadcastRoomUserCount = (roomId) => {
+const broadcastRoomUsers = (roomId) => {
   if (!roomId) return;
-  const roomUsers = io.sockets.adapter.rooms.get(roomId)?.size || 0;
-  io.to(roomId).emit('room-user-count', roomUsers);
+
+  const room = io.sockets.adapter.rooms.get(roomId);
+  const users = room ? Array.from(room) : [];
+  const payload = {
+    count: users.length,
+    users,
+  };
+
+  io.to(roomId).emit('room-users-update', payload);
 };
 
 io.on('connection', (socket) => {
   console.log(`⚡ New client connected: ${socket.id}`);
 
   socket.on('join-room', (roomId) => {
+    if (!roomId) return;
+
     socket.join(roomId);
-    broadcastRoomUserCount(roomId);
+    broadcastRoomUsers(roomId);
     console.log(`👤 User ${socket.id} joined room: ${roomId}`);
   });
 
@@ -80,7 +89,7 @@ io.on('connection', (socket) => {
   socket.on('disconnecting', () => {
     socket.rooms.forEach((roomId) => {
       if (roomId !== socket.id) {
-        broadcastRoomUserCount(roomId);
+        broadcastRoomUsers(roomId);
       }
     });
   });
