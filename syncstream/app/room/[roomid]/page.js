@@ -19,10 +19,13 @@ import VideoStage from '../../component/videostage';
 import ChatSidebar from '../../component/chatsidebar';
 import VideoCall from '../../component/VideoCall';
 
-// Falls back to localhost for local dev; set NEXT_PUBLIC_SOCKET_URL in
-// production so this doesn't ship pointing at a dev-only server.
+// Prefer an explicit runtime override, otherwise use the deployed Render
+// backend in production and localhost during local development.
 const SOCKET_SERVER_URL =
-  process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
+  process.env.NEXT_PUBLIC_SOCKET_URL ||
+  (process.env.NODE_ENV === 'development'
+    ? 'http://localhost:4000'
+    : 'https://streaming-5vi3.onrender.com');
 
 // Deterministic accent color per user, picked from a small dense-UI palette.
 const AVATAR_COLORS = ['#F97066', '#F0B429', '#3FB950', '#3B9EFF', '#C084FC', '#F472B6'];
@@ -75,10 +78,13 @@ export default function RoomPage() {
     if (!roomId) return;
 
     const socketInstance = io(SOCKET_SERVER_URL, {
+      path: '/socket.io',
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      withCredentials: false,
     });
 
     socketRef.current = socketInstance;
@@ -116,10 +122,14 @@ export default function RoomPage() {
   useEffect(() => {
     if (!socket) return;
 
-    const handleRoomUserCount = (count) => setUserCount(count);
-    socket.on('room-user-count', handleRoomUserCount);
+    const handleRoomUsersUpdate = ({ count, users } = {}) => {
+      const nextCount = typeof count === 'number' ? count : users?.length ?? 1;
+      setUserCount(nextCount);
+    };
 
-    return () => socket.off('room-user-count', handleRoomUserCount);
+    socket.on('room-users-update', handleRoomUsersUpdate);
+
+    return () => socket.off('room-users-update', handleRoomUsersUpdate);
   }, [socket]);
 
   const handleCopyCode = useCallback(async () => {
